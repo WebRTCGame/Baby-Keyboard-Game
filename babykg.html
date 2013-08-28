@@ -8,6 +8,7 @@
     
     <canvas id='canvasID'></canvas>
     <script>
+    
 var canvas, context;
 var drawarray = new Array();
 
@@ -138,26 +139,73 @@ var oldletter = "";
 var oldx, oldy;
 var oldcol;
 var midx, midy;
+var audiocontext;
+var bufferLoader;
+var source1;
+var audioBufferList = new Array();
+var audioOffsets = {
+    A: [0.5, 0.75],
+    B: [1.25, 1],
+    C: [2.25,1],
+    D: [3.125,.875],
+    E: [4,1],
+    F: [5,1],
+    G: [6,1],
+    H: [7.5,1],
+    I: [8.5,0.75],
+    J: [9.25,1],
+    K: [10.25,0.75],
+    L: [11.25,0.75],
+    M: [12,1],
+    N: [13,1],
+    O: [14,1],
+    P: [15,1],
+    Q: [16.5,1],
+    R: [17.5,1],
+    S: [18.5,1],
+    T: [19.5,0.75],
+    U: [20.5,0.75],
+    V: [21,1],
+    W: [22.5,1.5],
+    X: [24,1],
+    Y: [25,1],
+    Z: [27,1]
+};
 
-window.onload = window.resize = function() {
+window.onload = function() {
 
     function onKeyboardEvent(event) {
         for (var key in keycode) {
             if (keycode[key] == event.keyCode) {
 
                 theletter = key;
+                
+
+                
+             source1 = audiocontext.createBufferSource();
+             source1.buffer = audioBufferList[0];
+             source1.connect(audiocontext.destination);
+             
+             //playByLetter(source1,key);
+             source1.start(0,audioOffsets[key][0],audioOffsets[key][1]);
             }
         }
         event.preventDefault();
         return false;
     };
 
+
     window.addEventListener('keydown', onKeyboardEvent, false);
     //window.addEventListener('keyup', onKeyboardEvent, false);
 
     start();
 };
-
+/*
+function playByLetter(buffersource,letter){
+    
+    buffersource.start(0,audioOffsets[letter][0],audioOffsets[letter][1]);
+};
+*/
 function start() {
     console.log("start");
 
@@ -184,6 +232,22 @@ function setup() {
     midy = canvas.height * 0.5;
 
 
+    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+    audiocontext = new AudioContext();
+    source1 = audiocontext.createBufferSource();
+    bufferLoader = new BufferLoader(
+    audiocontext, ['abc.ogg'],
+    function(bufferList) {
+        source1.buffer = bufferList[0];
+        source1.connect(audiocontext.destination);
+    });
+
+    bufferLoader.load();
+    
+              
+    
+    
+    
 };
 
 function update() {
@@ -207,28 +271,18 @@ function render() {
     if (theletter !== oldletter) {
 
         var newcol = "rgba(" + randomFromInterval(50, 255) + "," + randomFromInterval(50, 255) + "," + randomFromInterval(50, 255) + ",1)";
-
         var size = context.measureText(val1);
-        var hw = size.width * 0.5;
-        var tx = randomFromInterval(hw, canvas.width - hw);
+        var tx = randomFromInterval(size.width * 0.5, canvas.width - (size.width * 0.5));
         oldx = tx;
         var ty = randomFromInterval(fontsize, canvas.height - fontsize / 2);
         oldy = ty;
         oldcol = newcol;
+        //console.log (newcol);
     }
-
-    if (oldx < midx) {
-        oldx++
-    };
-    if (oldx > midx) {
-        oldx--
-    };
-    if (oldy < midy) {
-        oldy++
-    };
-    if (oldy > midy) {
-        oldy--
-    };
+oldx < midx && oldx++;
+oldx > midx && oldx--;
+oldy < midy && oldy++;
+oldy > midy && oldy--;
 
     context.fillStyle = oldcol;
     context.fillText(val1, oldx, oldy);
@@ -246,6 +300,59 @@ window.requestAnimFrame = (function() {
         window.setTimeout(callback, 1000 / 60);
     };
 })();
+
+
+
+
+function BufferLoader(context, urlList, callback) {
+  this.context = context;
+  this.urlList = urlList;
+  this.onload = callback;
+  this.bufferList = new Array();
+  this.loadCount = 0;
+};
+
+BufferLoader.prototype.loadBuffer = function(url, index) {
+  // Load buffer asynchronously
+  var request = new XMLHttpRequest();
+  request.open("GET", url, true);
+  request.responseType = "arraybuffer";
+
+  var loader = this;
+
+  request.onload = function() {
+    // Asynchronously decode the audio file data in request.response
+    loader.context.decodeAudioData(
+      request.response,
+      function(buffer) {
+        if (!buffer) {
+          alert('error decoding file data: ' + url);
+          return;
+        }
+        loader.bufferList[index] = buffer;
+        if (++loader.loadCount == loader.urlList.length)
+          loader.onload(loader.bufferList);
+          audioBufferList = loader.bufferList;
+      },
+      function(error) {
+        console.error('decodeAudioData error', error);
+      }
+    );
+  }
+
+  request.onerror = function() {
+    alert('BufferLoader: XHR error');
+  }
+
+  request.send();
+};
+
+BufferLoader.prototype.load = function() {
+  for (var i = 0; i < this.urlList.length; ++i)
+  this.loadBuffer(this.urlList[i], i);
+};
+
+
     </script>
   </body>
 </html>
